@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<Plugin>
+	<Information>
+		<Name>LotroCompanion</Name>
+		<Author>Glumlug</Author>
+		<Version>v0.0.1</Version>
+    <Image>LotroCompanion/LotroCompanion/Resources/icon.tga</Image>
+    <Description>Plugin associated with the LotroCompanion desktop application</Description>
+	</Information>
+	<Package>LotroCompanion.LotroCompanion.Main</Package>
+	<Configuration Apartment="LotroCompanion" />
+</Plugin>

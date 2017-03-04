@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PluginConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Id>10012</Id>
+  <Name>LotroCompanion</Name>
+  <Author>Glumlug</Author>
+  <Version>v0.0.1</Version>
+  <InfoUrl>https://sourceforge.net/projects/lotrocompanion/</InfoUrl>
+  <DownloadUrl>https://sourceforge.net/projects/lotrocompanion/</DownloadUrl>
+  <Descriptors>
+    <descriptor>LotroCompanion\LotroCompanion.plugin</descriptor>
+  </Descriptors>
+  <Dependencies />
+</PluginConfig>
