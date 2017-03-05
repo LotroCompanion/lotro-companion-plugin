@@ -53,8 +53,8 @@ end
 Turbine.Shell.AddCommand('LotroCompanion', LotroCompanionCommand)
 PlayerAtt = Player:GetAttributes();
 
-walletStats = {};
-walletStats["money"] = {};
+characterData = {};
+characterData["money"] = {};
 
 function Dump()
 	write( "Dump" );
@@ -64,14 +64,14 @@ function Dump()
 	-- money
 	local money = PlayerAtt:GetMoney();
 	DecryptMoney( money );
-	walletStats["money"].gold = gold;
-	walletStats["money"].silver = silver;
-	walletStats["money"].copper = copper;
+	characterData["money"].gold = gold;
+	characterData["money"].silver = silver;
+	characterData["money"].copper = copper;
 	-- Gear
 	GetEquipmentInfos();
 	-- Stats
 	GetStats();
-	Turbine.PluginData.Save( Turbine.DataScope.Server, "LotroCompanionData", walletStats );
+	Turbine.PluginData.Save( Turbine.DataScope.Server, "LotroCompanionData", characterData );
 	write( "END Dump" );
 end
 
@@ -115,6 +115,9 @@ function GetStats()
 	stats = {};
 	stats["MORALE"]=Player:GetMorale();
 	stats["MAXMORALE"]=Player:GetMaxMorale();
+	stats["OCMR"]=PlayerAtt:GetOutOfCombatMoraleRegeneration();
+	stats["ICMR"]=PlayerAtt:GetInCombatMoraleRegeneration();
+
 
 	PlayerRaceIs = Player:GetRace();
 	if PlayerClassIs == 214 then
@@ -126,12 +129,14 @@ function GetStats()
 		MaxPower = Player:GetMaxPower();
 	end;
 	stats["POWER"]=Power;
-	stats["MAXPOWER"]=MaxPower;
+	stats["ICPR"]=PlayerAtt:GetInCombatPowerRegeneration();
+	stats["OCPR"]=PlayerAtt:GetOutOfCombatPowerRegeneration();
 
 	PlayerAlign=Player:GetAlignment();
 	if PlayerAlign == 1 then
 		stats["ARMOR"]=PlayerAtt:GetArmor();
-		
+		stats["BASE_ARMOR"]=PlayerAtt:GetBaseArmor();
+
 		-- HEALING --
 		stats["OUTGOING_HEALING"]=PlayerAtt:GetOutgoingHealing();
 		stats["INCOMING_HEALING"]=PlayerAtt:GetIncomingHealing();
@@ -139,17 +144,28 @@ function GetStats()
 		
 		-- STATISTICS --
 		stats["MIGHT"]=PlayerAtt:GetMight();
+		stats["BASE_MIGHT"]=PlayerAtt:GetBaseMight();
 		stats["AGILITY"]=PlayerAtt:GetAgility();
+		stats["BASE_AGILITY"]=PlayerAtt:GetBaseAgility();
 		stats["VITALITY"]=PlayerAtt:GetVitality();
+		stats["BASE_VITALITY"]=PlayerAtt:GetBaseVitality();
 		stats["WILL"]=PlayerAtt:GetWill();
+		stats["BASE_WILL"]=PlayerAtt:GetBaseWill();
 		stats["FATE"]=PlayerAtt:GetFate();
+		stats["BASE_FATE"]=PlayerAtt:GetBaseFate();
 		stats["FINESSE"]=PlayerAtt:GetFinesse();
+
 		-- STATISTICS END --
 		
 		-- MITIGATIONS
 		stats["COMMON_MITIGATION"]=PlayerAtt:GetCommonMitigation();
 		stats["TACTICAL_MITIGATION"]=PlayerAtt:GetTacticalMitigation();
 		stats["PHYSICAL_MITIGATION"]=PlayerAtt:GetPhysicalMitigation();
+		stats["FIRE_MITIGATION"]=PlayerAtt:GetFireMitigation();
+		stats["LIGHTNING_MITIGATION"]=PlayerAtt:GetLightningMitigation();
+		stats["FROST_MITIGATION"]=PlayerAtt:GetFrostMitigation();
+		stats["ACID_MITIGATION"]=PlayerAtt:GetAcidMitigation();
+		stats["SHADOW_MITIGATION"]=PlayerAtt:GetShadowMitigation();
 		-- MITIGATIONS END --
 		
 		-- OFFENCE --
@@ -157,18 +173,36 @@ function GetStats()
 		stats["RANGE_DAMAGE"]=PlayerAtt:GetRangeDamage();
 		stats["TACTICAL_DAMAGE"]=PlayerAtt:GetTacticalDamage();
 		stats["CRITICAL_RATING"]=PlayerAtt:GetBaseCriticalHitChance();
+		stats["MELEE_CRIT"]=PlayerAtt:GetMeleeCriticalHitChance();
+		stats["TACTICAL_CRIT"]=PlayerAtt:GetTacticalCriticalHitChance();
+		stats["RANGED_CRIT"]=PlayerAtt:GetRangeCriticalHitChance();
 		-- OFFENCE END --
 		
 		-- DEFENCE --
 		stats["CRITICAL_DEFENCE"]=PlayerAtt:GetBaseCriticalHitAvoidance();
+		stats["CRITICAL_DEFENCE_MELEE"]=PlayerAtt:GetMeleeCriticalHitAvoidance();
+		stats["CRITICAL_DEFENCE_RANGED"]=PlayerAtt:GetRangeCriticalHitAvoidance();
+		stats["CRITICAL_DEFENCE_TACTICAL"]=PlayerAtt:GetTacticalCriticalHitAvoidance();
+		stats["MELEE_DEFENCE"]=PlayerAtt:GetMeleeDefence();
+		stats["RANGE_DEFENCE"]=PlayerAtt:GetRangeDefence();
+		stats["TACTICAL_DEFENCE"]=PlayerAtt:GetTacticalDefence();
+
 		stats["RESISTANCE"]=PlayerAtt:GetBaseResistance();
+		stats["POISON_RESIST"]=PlayerAtt:GetPoisonResistance();
+		stats["FEAR_RESIST"]=PlayerAtt:GetFearResistance();
+		stats["DISEASE_RESIST"]=PlayerAtt:GetDiseaseResistance();
+		stats["WOUND_RESISTS"]=PlayerAtt:GetWoundResistance();
+
 		stats["BLOCK"]=PlayerAtt:GetBlock();
+		stats["CAN_BLOCK"]=PlayerAtt:CanBlock();
 		stats["PARRY"]=PlayerAtt:GetParry();
+		stats["CAN_PARRY"]=PlayerAtt:CanParry();
 		stats["EVADE"]=PlayerAtt:GetEvade();
+		stats["CAN_EVADE"]=PlayerAtt:CanEvade();
 		-- DEFENCE END --
 	end
 
-	walletStats["stats"] = stats;
+	characterData["stats"] = stats;
 end
 
 function GetEquipmentInfos()
@@ -217,7 +251,7 @@ function GetEquipmentInfos()
 			end
 		end
 	end
-	walletStats["gear"] = itemEquip;
+	characterData["gear"] = itemEquip;
 end
 
 function UpdatePlayersInfos()
@@ -269,7 +303,10 @@ function UpdatePlayersInfos()
 	-- Level
 	infos["Level"] = Player:GetLevel();
 
-	walletStats["infos"] = infos;
+	-- Destiny points
+	infos["DestinyPoints"] = PlayerAtt:GetDestinyPoints();
+
+	characterData["infos"] = infos;
 end
 --**^
 
