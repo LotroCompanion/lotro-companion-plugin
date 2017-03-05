@@ -29,6 +29,14 @@ backpack = Player:GetBackpack();
 --PlayerPet = Player:GetPet();
 --**
 
+MYCHAR = Turbine.Gameplay.LocalPlayer.GetInstance();
+MYATTS = MYCHAR:GetAttributes();
+MYNAME = MYCHAR:GetName();
+
+_PROFESSIONSINFO = {};
+_RECIPES = {};
+
+
 --**v Detect Game Language v**
 -- Legend: 0 = invalid / 2 = English / 268435457 = EnglishGB / 268435459 = Francais / 268435460 = Deutsch / 268435463 = Russian
 GLocale = Turbine.Engine.GetLanguage();
@@ -54,14 +62,16 @@ Turbine.Shell.AddCommand('LotroCompanion', LotroCompanionCommand)
 PlayerAtt = Player:GetAttributes();
 
 characterData = {};
-characterData["money"] = {};
 
 function Dump()
 	write( "Dump" );
 
+	characterData = {};
+
 	-- infos
 	UpdatePlayersInfos();
 	-- money
+	characterData["money"] = {};
 	local money = PlayerAtt:GetMoney();
 	DecryptMoney( money );
 	characterData["money"].gold = gold;
@@ -71,7 +81,14 @@ function Dump()
 	GetEquipmentInfos();
 	-- Stats
 	GetStats();
-	Turbine.PluginData.Save( Turbine.DataScope.Server, "LotroCompanionData", characterData );
+	-- Crafting
+	characterData["Vocation"] = GetMyVocation();
+	GetMyRecipes();
+	GetMyProfessions();
+	characterData["Professions"] = _PROFESSIONSINFO;
+	characterData["Recipes"] = _RECIPES;
+
+	Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionData", characterData );
 	write( "END Dump" );
 end
 
@@ -305,10 +322,190 @@ function UpdatePlayersInfos()
 
 	-- Destiny points
 	infos["DestinyPoints"] = PlayerAtt:GetDestinyPoints();
-
+	
 	characterData["infos"] = infos;
 end
 --**^
+
+function GetMyVocation()
+
+	-- This function gets the players vocation (eg Tinker or Historian) and returns the name as a string.
+	local MYVOCATIONINFO = MYATTS:GetVocation();
+
+	if MYVOCATIONINFO == nil then return nil end;
+
+	local VOCATION = "";
+
+	for k,v in pairs(Turbine.Gameplay.Vocation) do
+
+		if v == MYVOCATIONINFO then
+			VOCATION = k;
+			break;
+		end
+
+	end
+
+	return VOCATION;
+end
+
+function GetMyProfessions()
+
+	-- This function fills the _PROFESSIONSINFO table with all the profession info
+	_PROFESSIONSINFO = {};
+
+	-- This function gets each of the characters professions.
+	for k,v in pairs (Turbine.Gameplay.Profession) do
+
+		local PROFESSIONINFO = MYATTS:GetProfessionInfo(v); -- If character is not of the profession, this returns nil.
+
+		if PROFESSIONINFO ~= nil then
+
+			_PROFESSIONSINFO[k] =
+			{
+			["ProficiencyExperience"] = PROFESSIONINFO:GetProficiencyExperience(); -- number
+			["ProficiencyExperienceTarget"] = PROFESSIONINFO:GetProficiencyExperienceTarget(); -- number e.g. 760 (Eastemnet)
+			["ProficiencyTitle"] = PROFESSIONINFO:GetProficiencyTitle(); -- string e.g. <NAME>, Westfold Prospector
+			["ProfessionName"] = PROFESSIONINFO:GetName(); -- string e.g. Prospector
+			["MasteryLevel"] = PROFESSIONINFO:GetMasteryLevel(); -- number e.g. 7 (Westfold). The current level you're at, not where you are heading
+			["ProficiencyLevel"] = PROFESSIONINFO:GetProficiencyLevel(); -- number e.g. 7 (Westfold)
+			["MasteryTitle"] = PROFESSIONINFO:GetMasteryTitle(); -- string e.g. <Name>. Westfold Master Prospector
+			["MasteryExperienceTarget"] = PROFESSIONINFO:GetMasteryExperienceTarget(); -- number e.g. 1520 (Eastemnet)
+			["MasteryExperience"] = PROFESSIONINFO:GetMasteryExperience(); -- number
+			};
+			GetMyRecipes(k);
+		end
+	end
+end
+
+-- This function gets the known recipes of the given profession
+function GetMyRecipes(PROFESSION)
+
+	if PROFESSION == nil then return end;
+
+
+	_RECIPES[PROFESSION] = nil;
+
+	local _TEMPRECIPETABLE = {};
+
+	-- Check PROFESSIONS is valid and a known profession
+	local PROFESSIONINFO = MYATTS:GetProfessionInfo(Turbine.Gameplay.Profession[PROFESSION]);
+
+
+	if PROFESSIONINFO ~= nil then
+
+		-- Get recipes.
+		if PROFESSIONINFO.GetRecipeCount == nil then return end;
+		local MAXRECIPES = PROFESSIONINFO:GetRecipeCount();	-- Number e.g 35 (all recipes across all tiers)
+
+		--Debug(PROFESSION .. " = " .. MAXRECIPES);
+
+
+		for i=1, MAXRECIPES do
+
+			local TEMPRECIPE = PROFESSIONINFO:GetRecipe(i);
+			local itemInfo = TEMPRECIPE:GetResultItemInfo();
+
+			_TEMPRECIPETABLE[i] =
+			{
+			["Name"] = TEMPRECIPE:GetName(); -- string e.g. Polished Red Agate
+			["IsKnown"] = true;
+			["CategoryName"] = TEMPRECIPE:GetCategoryName(); -- string e.g. Gemstones
+			["OptionalIngredientCount"] = TEMPRECIPE:GetOptionalIngredientCount(); -- number e.g. 1
+			["Tier"] = TEMPRECIPE:GetTier(); -- number e.g. 8 (8 = Eastemnet from Turbine.Gameplay.CraftTier)
+			["ExperienceReward"] = TEMPRECIPE:GetExperienceReward(); -- number e.g. 8 (xp)
+			["Cooldown"] = TEMPRECIPE:GetCooldown(); -- number e.g. -1 (I guess for no cd.) Time is given in seconds e.g. 237600 seconds = 2 days 18 hours
+			["Profession"] = TEMPRECIPE:GetProfession(); -- number e.g. 4 (4 = Jeweller from Turbine.Gameplay.Profession)
+			["IngredientCount"] = TEMPRECIPE:GetIngredientCount(); -- number e.g 1
+			["HasCriticalResultItem"] = TEMPRECIPE:HasCriticalResultItem(); -- boolean
+			["Category"] = TEMPRECIPE:GetCategory(); -- number e.g. 12
+			["IsSingleUse"] = TEMPRECIPE:IsSingleUse(); -- boolean
+			["BaseCriticalSuccessChance"] = TEMPRECIPE:GetBaseCriticalSuccessChance(); -- number in decimal format e.g. 0.050000000745058 == 5%
+			["CriticalSuccessItemQuantity"] = TEMPRECIPE:GetCriticalResultItemQuantity(); -- number e.g. 3
+			["ResultItemQuantity"] = TEMPRECIPE:GetResultItemQuantity(); -- number e.g. 1
+
+			["IngredientPack"] = TEMPRECIPE:GetIngredientPack(); -- returns nil if there is none.
+			["ResultItemName"] = itemInfo:GetName(); -- string
+			["ResultItemIconID"] = itemInfo:GetIconImageID();
+			["ResultItemBackgroundIconID"] = itemInfo:GetBackgroundImageID();
+
+			["Ingredients"] = {}; -- Blank to be filled later.
+			["OptionalIngredient"] = {}; -- Blank to be filled later.
+
+			};
+
+
+			-- If the item has a critical result item then get the info for it.
+			if _TEMPRECIPETABLE[i].HasCriticalResultItem == true then
+				local critResultItemInfo = TEMPRECIPE:GetCriticalResultItemInfo();
+				_TEMPRECIPETABLE[i].CriticalResultItemName = critResultItemInfo:GetName(); -- string
+				_TEMPRECIPETABLE[i]["CriticalResultItemIconId"] = critResultItemInfo:GetIconImageID(); -- string
+				_TEMPRECIPETABLE[i]["CriticalResultItemBackgroundIconId"] = critResultItemInfo:GetBackgroundImageID(); -- string
+			end
+
+
+			-- Ingredients table
+			local _TEMPINGREDIENTTABLE = _TEMPRECIPETABLE[i].Ingredients;
+
+			for a=1, _TEMPRECIPETABLE[i].IngredientCount do
+
+				local TEMPINGREDIENT = TEMPRECIPE:GetIngredient(a); -- Returns RECIPE INGREDIENT
+
+				local itemInfo = TEMPINGREDIENT:GetItemInfo();
+				_TEMPINGREDIENTTABLE[a] =
+				{
+					["Name"] = itemInfo:GetName(); -- String e.g. Polished Green Garnet
+					["CriticalChanceBonus"] = TEMPINGREDIENT:GetCriticalChanceBonus(); -- number e.g. 0.44999998807907 (45%)
+					["RequiredQuantity"] = TEMPINGREDIENT:GetRequiredQuantity(); -- number e.g. 3
+					["IconID"] = itemInfo:GetIconImageID();
+					["BackgroundIconID"] = itemInfo:GetBackgroundImageID();
+				};
+			end
+
+
+			-- Optional ingredients table
+			local _TEMPOPTINGREDIENTTABLE = _TEMPRECIPETABLE[i].OptionalIngredient;
+
+			for a=1, _TEMPRECIPETABLE[i].OptionalIngredientCount do
+
+				local TEMPINGREDIENT = TEMPRECIPE:GetOptionalIngredient(a); -- Returns RECIPE INGREDIENT
+				local itemInfo = TEMPINGREDIENT:GetItemInfo();
+
+				_TEMPOPTINGREDIENTTABLE[a] =
+				{
+					["Name"] = itemInfo:GetName(); -- String e.g. Polished Green Garnet
+					["CriticaChanceBonus"] = TEMPINGREDIENT:GetCriticalChanceBonus(); -- number e.g. 0.44999998807907 (45%)
+					["RequiredQuantity"] = TEMPINGREDIENT:GetRequiredQuantity(); -- number e.g. 3
+					["IconID"] = itemInfo:GetIconImageID();
+					["BackgroundIconID"] = itemInfo:GetBackgroundImageID();
+				};
+			end
+
+		end
+
+		_RECIPES[PROFESSION]  = deepcopy(_TEMPRECIPETABLE);
+
+	end
+
+end
+
+--This function returns a deep copy of a given table ---------------
+function deepcopy(object)
+    local lookup_table = {}
+    local function _copy(object)
+        if type(object) ~= "table" then
+            return object
+        elseif lookup_table[object] then
+            return lookup_table[object]
+        end
+        local new_table = {}
+        lookup_table[object] = new_table
+        for index, value in pairs(object) do
+            new_table[_copy(index)] = _copy(value)
+        end
+        return setmetatable(new_table, getmetatable(object))
+    end
+    return _copy(object)
+end
 
 
 Turbine.Plugin.Load = function( self, sender, args )
