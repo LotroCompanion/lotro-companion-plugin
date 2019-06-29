@@ -6,6 +6,8 @@ import "Turbine.UI";
 import "Turbine.UI.Lotro";
 import "Turbine.Gameplay";
 
+import "LotroCompanion.ItemLinkDecode";
+
 AppDir = "LotroCompanion.LotroCompanion";
 AppDirD = AppDir..".";
 
@@ -531,4 +533,65 @@ end
 Turbine.Plugin.Unload = function( self, sender, args )
 	write("Unloading LotroCompanion");
 	Dump();
+end
+
+local chatHook = function (sender, args)
+	write("Message: "..args.Message);
+	local pre, data, post = string.match( args.Message, "<Examine(.*)>(%b[])<\\Examine(.*)>" ); 
+	if pre ~= nil then
+		write("pre="..pre);
+		-- for normal non parametered items (e.g. recipe elements with count=1), gives
+		-- :IIDDID:0x0000000000000000:0x70022192
+		-- where last hexa element is the item ID
+		local value1,id = string.match( pre, ":IIDDID:0x(.*):0x(.*)" ); 
+		if id ~= nil then
+			write("ID(hex)="..id);
+		end
+	end
+	if data ~= nil then
+		write("data="..data);
+	end
+	if post ~= nil then
+		write("post="..post);
+	end
+	local LIData, name = string.match( args.Message, "<ExamineIA:IAInfo:(.*)>(%b[])<\\ExamineIA>" ); 
+	if LIData ~= nil then
+		local result = LotroCompanion.ItemLinkDecode.DecodeLinkDataRaw( LIData );
+		result.legendary = true;
+--[[
+		if result ~= nil then
+			local id = result.itemGID;
+			if id ~= nil then
+				write("ID="..id);
+			end
+		end
+--]]
+		Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItem", result );
+		return;
+	end
+	local itemData, name = string.match( args.Message, "<ExamineItemInstance:ItemInfo:(.*)>(%b[])<\\ExamineItemInstance>" );
+	if itemData ~= nil then
+		local result = LotroCompanion.ItemLinkDecode.DecodeLinkDataRaw( itemData );
+		result.legendary = false;
+--[[
+		if result ~= nil then
+			local id = result.itemGID;
+			if id ~= nil then
+				write("ID="..id);
+			end
+		end
+--]]
+		write("Saving data");
+		Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItem", result );
+	end
+end
+
+-- install the chat hook
+if type(Turbine.Chat.Received) == "table" then
+	write("added chat hook");
+	table.insert( Turbine.Chat.Received, chatHook );
+else
+	local existingHook = Turbine.Chat.Received;
+	Turbine.Chat.Received = { chatHook, existingHook };
+	write("inserted chat hook");
 end
