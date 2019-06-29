@@ -535,6 +535,10 @@ Turbine.Plugin.Unload = function( self, sender, args )
 	Dump();
 end
 
+-- data = Turbine.PluginData.Load(Turbine.DataScope.Character,"LotroCompanionItems");
+dataItems = {};
+dataItems.counter = 1;
+
 local chatHook = function (sender, args)
 	write("Message: "..args.Message);
 	local pre, data, post = string.match( args.Message, "<Examine(.*)>(%b[])<\\Examine(.*)>" ); 
@@ -556,33 +560,33 @@ local chatHook = function (sender, args)
 	end
 	local LIData, name = string.match( args.Message, "<ExamineIA:IAInfo:(.*)>(%b[])<\\ExamineIA>" ); 
 	if LIData ~= nil then
-		local result = LotroCompanion.ItemLinkDecode.DecodeLinkDataRaw( LIData );
-		result.legendary = true;
---[[
-		if result ~= nil then
-			local id = result.itemGID;
-			if id ~= nil then
-				write("ID="..id);
-			end
+		-- write("Got legendary item!");
+		local decodedItem = LotroCompanion.ItemLinkDecode.DecodeLinkDataRaw( LIData );
+		if decodedItem ~= nil then
+			newItem = {};
+			newItem.item = decodedItem;
+			newItem.timestamp = Turbine.Engine:GetLocalTime();
+			newItem.legendary = true;
+			dataItems[dataItems.counter] = newItem;
+			dataItems.counter=dataItems.counter+1;
 		end
---]]
-		Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItem", result );
+		Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItems", dataItems );
 		return;
 	end
 	local itemData, name = string.match( args.Message, "<ExamineItemInstance:ItemInfo:(.*)>(%b[])<\\ExamineItemInstance>" );
 	if itemData ~= nil then
-		local result = LotroCompanion.ItemLinkDecode.DecodeLinkDataRaw( itemData );
-		result.legendary = false;
---[[
-		if result ~= nil then
-			local id = result.itemGID;
-			if id ~= nil then
-				write("ID="..id);
-			end
+		-- write("Got regular item!");
+		local decodedItem = LotroCompanion.ItemLinkDecode.DecodeLinkDataRaw( itemData );
+		if decodedItem ~= nil then
+			newItem = {};
+			newItem.item = decodedItem;
+			newItem.timestamp = Turbine.Engine:GetLocalTime();
+			newItem.legendary = false;
+			dataItems[dataItems.counter] = newItem;
+			dataItems.counter=dataItems.counter+1;
 		end
---]]
 		write("Saving data");
-		Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItem", result );
+		Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItems", dataItems );
 	end
 end
 
