@@ -471,7 +471,7 @@ function GetMyRecipes(PROFESSION)
 				_TEMPINGREDIENTTABLE[a] =
 				{
 					["Name"] = itemInfo:GetName(); -- String e.g. Polished Green Garnet
-					["CriticalChanceBonus"] = TEMPINGREDIENT:GetCriticalChanceBonus(); -- number e.g. 0.44999998807907 (45%)
+					-- ["CriticalChanceBonus"] = TEMPINGREDIENT:GetCriticalChanceBonus(); -- number e.g. 0.44999998807907 (45%)
 					["RequiredQuantity"] = TEMPINGREDIENT:GetRequiredQuantity(); -- number e.g. 3
 					["IconID"] = itemInfo:GetIconImageID();
 					["BackgroundIconID"] = itemInfo:GetBackgroundImageID();
