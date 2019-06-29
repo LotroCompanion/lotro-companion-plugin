@@ -62,9 +62,10 @@ Turbine.Shell.AddCommand('LotroCompanion', LotroCompanionCommand)
 PlayerAtt = Player:GetAttributes();
 
 characterData = {};
+craftingData = {};
 
 function Dump()
-	write( "Dump" );
+	-- write( "Dump" );
 
 	characterData = {};
 
@@ -81,15 +82,15 @@ function Dump()
 	GetEquipmentInfos();
 	-- Stats
 	GetStats();
-	-- Crafting
-	characterData["Vocation"] = GetMyVocation();
-	GetMyRecipes();
-	GetMyProfessions();
-	characterData["Professions"] = _PROFESSIONSINFO;
-	characterData["Recipes"] = _RECIPES;
+	Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionCharacter", characterData );
 
-	Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionData", characterData );
-	write( "END Dump" );
+	-- Crafting
+	craftingData["Vocation"] = GetMyVocation();
+	GetMyProfessions();
+	craftingData["Status"] = _PROFESSIONSINFO;
+	Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionCrafting", craftingData );
+	Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionRecipes", _RECIPES );
+	-- write( "END Dump" );
 end
 
 function DecryptMoney(v)
@@ -234,38 +235,37 @@ function GetEquipmentInfos()
 	
 	for i, v in ipairs( EquipSlots ) do
 		local PlayerEquipItem = PlayerEquipment:GetItem( v );
-		itemEquip[i] = Turbine.UI.Lotro.ItemControl( PlayerEquipItem );
-	
+		itemEquip[i] = {};
+		-- itemEquip[i] = Turbine.UI.Lotro.ItemControl( PlayerEquipItem );
+
 		-- Item Name, WearState, Quality & Durability
 		if PlayerEquipItem ~= nil then
 			itemEquip[i].Item = true;
-			itemEquip[i].Name = PlayerEquipItem:GetName();
+			itemEquip[i].GivenName = PlayerEquipItem:GetName();
 			itemEquip[i].Slot = Slots[i];--Debug
 
 			local Quality = PlayerEquipItem:GetQuality();
-			
+			itemEquip[i].Quality = Quality;
+			-- 0 Undefined ; 1 Legendary ; 2 Rare ; 3 Incomparable ; 4 Uncommon ; 5 Common
 			local Durability = PlayerEquipItem:GetDurability();
-
+			itemEquip[i].Durability = Durability;
+			-- 0 Undefined ; 1 Substantial ; 2 Brittle ; 3 Normal ; 4 Tough ; 5 Flimsy ; 6 Indestructible ; 7 Weak
 			itemEquip[i].WearState = PlayerEquipItem:GetWearState();
-					
+			-- 0 Undefined ; 1 Damaged ; 2 Pristine ; 3 Broken ; 4 Worn
 			itemEquip[i].BImgID = PlayerEquipItem:GetBackgroundImageID();
-			itemEquip[i].QImgID = PlayerEquipItem:GetQualityImageID();
-			itemEquip[i].UImgID = PlayerEquipItem:GetUnderlayImageID();
-			itemEquip[i].SImgID = PlayerEquipItem:GetShadowImageID();
+			-- itemEquip[i].QImgID = PlayerEquipItem:GetQualityImageID();
+			-- itemEquip[i].UImgID = PlayerEquipItem:GetUnderlayImageID();
+			-- itemEquip[i].SImgID = PlayerEquipItem:GetShadowImageID();
 			itemEquip[i].IImgID = PlayerEquipItem:GetIconImageID();
-			
+			itemInfo = PlayerEquipItem:GetItemInfo();
+			if itemInfo ~= nil then
+				-- itemEquip[i].NameAndQuantity = itemInfo:GetNameWithQuantity();
+				itemEquip[i].MaxQuantity = itemInfo:GetMaxQuantity();
+				itemEquip[i].Name = itemInfo:GetName();
+				-- itemEquip[i].Description = itemInfo:GetDescription();
+			end;
 		else
 			itemEquip[i].Item = false;
-			itemEquip[i].Name = "zEmpty";
-			--itemEquip[i].Quality = 0;
-			--itemEquip[i].Durability = 0;
-			itemEquip[i].Score = 0;
-			itemEquip[i].WearState = 0;
-			itemEquip[i].WearStatePts = 0;
-			
-			if _G.Debug then
-				write( "<rgb=#FF0000>"..i.."</rgb>: <rgb=#6969FF>"..Slots[i]..":</rgb> <rgb=#FF3333>NO ITEM</rgb>" );
-			end
 		end
 	end
 	characterData["gear"] = itemEquip;
@@ -278,6 +278,11 @@ function UpdatePlayersInfos()
 	-- character main attributes
 	infos["Name"] = Player:GetName();
 	infos["Align"] = Player:GetAlignment(); --1: Free People / 2: Monster Play
+
+	-- infos["raceAttrs"] = Player:GetRaceAttributes();
+	-- infos["attrs"] = Player:GetAttributes();
+	-- infos["classAttrs"] = Player:GetClassAttributes();
+	-- infos["mount"] = Player:GetMount();
 
 	-- Race
 	PlayerRaceIs = Player:GetRace();
@@ -298,9 +303,20 @@ function UpdatePlayersInfos()
 	--Free People Class
 	if PlayerClassIs == 23 then PlayerClassIs = "Guardian";
 	elseif PlayerClassIs == 24 then PlayerClassIs = "Captain";
-	elseif PlayerClassIs == 31 then PlayerClassIs = "Minstrel";
+	elseif PlayerClassIs == 31 then
+		PlayerClassIs = "Minstrel";
+		minstrelAttrs = Player:GetClassAttributes();
+		minstrelStanceCode = minstrelAttrs:GetStance();
+		if (minstrelStanceCode == Turbine.Gameplay.Attributes.MinstrelStance["WarSpeech"]) then infos["Stance"] = "WarSpeech";
+		elseif (minstrelStanceCode == Turbine.Gameplay.Attributes.MinstrelStance["Harmony"]) then infos["Stance"] = "Harmony"; end
 	elseif PlayerClassIs == 40 then PlayerClassIs = "Burglar";
-	elseif PlayerClassIs == 162 then PlayerClassIs = "Hunter";
+	elseif PlayerClassIs == 162 then
+		PlayerClassIs = "Hunter";
+		hunterAttrs = Player:GetClassAttributes();
+		hunterStanceCode = hunterAttrs:GetStance();
+		if (hunterStanceCode == Turbine.Gameplay.Attributes.HunterStance["Precision"]) then infos["Stance"] = "Precision";
+		elseif (hunterStanceCode == Turbine.Gameplay.Attributes.HunterStance["Strength"]) then infos["Stance"] = "Strength";
+		elseif (hunterStanceCode == Turbine.Gameplay.Attributes.HunterStance["Endurance"]) then infos["Stance"] = "Endurance"; end
 	elseif PlayerClassIs == 172 then PlayerClassIs = "Champion";
 	elseif PlayerClassIs == 185 then PlayerClassIs = "Lore-Master";
 	elseif PlayerClassIs == 193 then PlayerClassIs = "Rune-Keeper";
@@ -352,6 +368,7 @@ function GetMyProfessions()
 
 	-- This function fills the _PROFESSIONSINFO table with all the profession info
 	_PROFESSIONSINFO = {};
+	_RECIPES = {};
 
 	-- This function gets each of the characters professions.
 	for k,v in pairs (Turbine.Gameplay.Profession) do
@@ -382,14 +399,12 @@ function GetMyRecipes(PROFESSION)
 
 	if PROFESSION == nil then return end;
 
-
 	_RECIPES[PROFESSION] = nil;
 
 	local _TEMPRECIPETABLE = {};
 
 	-- Check PROFESSIONS is valid and a known profession
 	local PROFESSIONINFO = MYATTS:GetProfessionInfo(Turbine.Gameplay.Profession[PROFESSION]);
-
 
 	if PROFESSIONINFO ~= nil then
 
@@ -414,7 +429,7 @@ function GetMyRecipes(PROFESSION)
 			["Tier"] = TEMPRECIPE:GetTier(); -- number e.g. 8 (8 = Eastemnet from Turbine.Gameplay.CraftTier)
 			["ExperienceReward"] = TEMPRECIPE:GetExperienceReward(); -- number e.g. 8 (xp)
 			["Cooldown"] = TEMPRECIPE:GetCooldown(); -- number e.g. -1 (I guess for no cd.) Time is given in seconds e.g. 237600 seconds = 2 days 18 hours
-			["Profession"] = TEMPRECIPE:GetProfession(); -- number e.g. 4 (4 = Jeweller from Turbine.Gameplay.Profession)
+			-- ["Profession"] = TEMPRECIPE:GetProfession(); -- number e.g. 4 (4 = Jeweller from Turbine.Gameplay.Profession)
 			["IngredientCount"] = TEMPRECIPE:GetIngredientCount(); -- number e.g 1
 			["HasCriticalResultItem"] = TEMPRECIPE:HasCriticalResultItem(); -- boolean
 			["Category"] = TEMPRECIPE:GetCategory(); -- number e.g. 12
@@ -473,7 +488,7 @@ function GetMyRecipes(PROFESSION)
 				_TEMPOPTINGREDIENTTABLE[a] =
 				{
 					["Name"] = itemInfo:GetName(); -- String e.g. Polished Green Garnet
-					["CriticaChanceBonus"] = TEMPINGREDIENT:GetCriticalChanceBonus(); -- number e.g. 0.44999998807907 (45%)
+					["CriticalChanceBonus"] = TEMPINGREDIENT:GetCriticalChanceBonus(); -- number e.g. 0.44999998807907 (45%)
 					["RequiredQuantity"] = TEMPINGREDIENT:GetRequiredQuantity(); -- number e.g. 3
 					["IconID"] = itemInfo:GetIconImageID();
 					["BackgroundIconID"] = itemInfo:GetBackgroundImageID();
@@ -510,8 +525,10 @@ end
 
 Turbine.Plugin.Load = function( self, sender, args )
 	write("Loaded plugin LotroCompanion");
+	Dump();
 end
 
 Turbine.Plugin.Unload = function( self, sender, args )
 	write("Unloading LotroCompanion");
+	Dump();
 end
