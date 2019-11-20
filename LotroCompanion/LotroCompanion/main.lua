@@ -53,6 +53,10 @@ LotroCompanionCommand = Turbine.ShellCommand()
 function LotroCompanionCommand:Execute( command, arguments )
 	if ( arguments == "dump") then
 		Dump();
+	elseif ( arguments == "start") then
+		StartCapture();
+	elseif ( arguments == "stop") then
+		StopCapture();
 	else
 		ShowNS = true;
 	end
@@ -229,7 +233,7 @@ function GetEquipmentInfos()
 	LoadEquipmentTable();
 	PlayerEquipment = Player:GetEquipment();
 	if PlayerEquipment == nil then write("<rgb=#FF3333>No equipment, returning.</rgb>"); return end --Remove when Player Equipment info are available before plugin is loaded
-	
+
 	itemEquip = {};
 	itemScore, numItems = 0, 0;
 	Wq = 4; -- weight Quality
@@ -527,12 +531,12 @@ end
 
 Turbine.Plugin.Load = function( self, sender, args )
 	write("Loaded plugin LotroCompanion");
-	Dump();
+	-- Dump();
 end
 
 Turbine.Plugin.Unload = function( self, sender, args )
-	write("Unloading LotroCompanion");
-	Dump();
+	write("Unloaded plugin LotroCompanion");
+	-- Dump();
 end
 
 dataItems = Turbine.PluginData.Load(Turbine.DataScope.Character,"LotroCompanionItems");
@@ -552,16 +556,32 @@ local handleChatItem = function(itemData)
 		if dataItems.counter == 100 then
 			dataItems.counter = 1;
 		end
+		write("Got an item");
+		-- write("Saving data");
+		Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItems", dataItems );
 	end
-	write("Saving data");
-	Turbine.PluginData.Save( Turbine.DataScope.Character, "LotroCompanionItems", dataItems );
+end
+
+chatHookState = 'Disabled';
+
+function StartCapture()
+	chatHookState = 'Enabled';
+	write("LotroCompanion: item capture is enabled");
+end
+
+function StopCapture()
+	chatHookState = 'Disabled';
+	write("LotroCompanion: item capture is disabled");
 end
 
 local chatHook = function (sender, args)
-	write("Message: "..args.Message);
+	if (chatHookState == 'Disabled') then
+		return;
+	end
+	-- write("Message: "..args.Message);
 	local pre, data, post = string.match( args.Message, "<Examine(.*)>(%b[])<\\Examine(.*)>" ); 
 	if pre ~= nil then
-		write("pre="..pre);
+		-- write("pre="..pre);
 		-- for normal non parametered items (e.g. recipe elements with count=1), gives
 		-- :IIDDID:0x0000000000000000:0x70022192
 		-- where last hexa element is the item ID
@@ -571,10 +591,10 @@ local chatHook = function (sender, args)
 		end
 	end
 	if data ~= nil then
-		write("data="..data);
+		-- write("data="..data);
 	end
 	if post ~= nil then
-		write("post="..post);
+		-- write("post="..post);
 	end
 	local LIData, name = string.match( args.Message, "<ExamineIA:IAInfo:(.*)>(%b[])<\\ExamineIA>" ); 
 	if LIData ~= nil then
@@ -591,10 +611,10 @@ end
 
 -- install the chat hook
 if type(Turbine.Chat.Received) == "table" then
-	write("added chat hook");
 	table.insert( Turbine.Chat.Received, chatHook );
+	write("LotroCompanion: added chat hook");
 else
 	local existingHook = Turbine.Chat.Received;
 	Turbine.Chat.Received = { chatHook, existingHook };
-	write("inserted chat hook");
+	write("LotroCompanion: inserted chat hook");
 end
