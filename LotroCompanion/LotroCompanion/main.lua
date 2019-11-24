@@ -64,7 +64,7 @@ function LotroCompanionCommand:Execute( command, arguments )
 	if ShowNS then write( "LotroCompanion: " .. "Command not supported" ); ShowNS = nil; end -- Command not supported
 end
 
-Turbine.Shell.AddCommand('LotroCompanion', LotroCompanionCommand)
+Turbine.Shell.AddCommand('lc', LotroCompanionCommand)
 PlayerAtt = Player:GetAttributes();
 
 characterData = {};
